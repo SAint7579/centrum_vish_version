@@ -19,16 +19,9 @@ class ConversationMessage(BaseModel):
 
 class DatingProfile(BaseModel):
     """Extracted dating profile from conversation"""
-    name: Optional[str] = None
     age: Optional[int] = None
-    location: Optional[str] = None
-    occupation: Optional[str] = None
-    interests: List[str] = []
-    looking_for: Optional[str] = None
     about_me: Optional[str] = None
-    ideal_partner: Optional[str] = None
-    fun_facts: List[str] = []
-    conversation_style: Optional[str] = None
+    looking_for: Optional[str] = None
 
 
 class ConversationSession(BaseModel):

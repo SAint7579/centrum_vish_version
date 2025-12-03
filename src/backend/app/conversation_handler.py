@@ -13,7 +13,7 @@ from typing import Optional, Callable
 import httpx
 
 from app.config import (
-    ELEVENLABS_API_KEY, 
+    ELEVEN_LABS_API_KEY, 
     ELEVENLABS_AGENT_ID,
     RECORDINGS_DIR,
     CONVERSATIONS_DIR
@@ -35,7 +35,8 @@ class ConversationManager:
         self.session = ConversationSession(
             session_id=session_id,
             user_id=user_id,
-            started_at=datetime.utcnow()
+            started_at=datetime.utcnow(),
+            profile=DatingProfile()  # Initialize empty profile
         )
         self.audio_chunks: list[bytes] = []
         self.is_active = False
@@ -49,6 +50,24 @@ class ConversationManager:
             audio_file=audio_file
         )
         self.session.messages.append(message)
+    
+    def update_profile(self, **kwargs):
+        """Update the dating profile with new information"""
+        if not self.session.profile:
+            self.session.profile = DatingProfile()
+        
+        profile = self.session.profile
+        
+        # Update fields
+        if kwargs.get("age"):
+            profile.age = kwargs["age"]
+        if kwargs.get("about_me"):
+            profile.about_me = kwargs["about_me"]
+        if kwargs.get("looking_for"):
+            profile.looking_for = kwargs["looking_for"]
+        
+        print(f"📝 Profile updated: {kwargs}")
+        return profile
         
     def add_audio_chunk(self, chunk: bytes):
         """Add an audio chunk from user's speech"""
@@ -99,36 +118,9 @@ class ConversationManager:
         return {
             "audio_path": audio_path,
             "json_path": json_path,
-            "session": self.session
+            "session": self.session,
+            "profile": self.session.profile
         }
-
-
-# Dating profile agent prompt
-DATING_PROFILE_PROMPT = """You are a friendly and engaging conversation partner helping someone create their dating profile. Your goal is to have a natural, warm conversation that helps extract information for their profile while also capturing good voice samples for voice cloning.
-
-Guidelines:
-1. Be warm, friendly, and make the person feel comfortable
-2. Ask open-ended questions that encourage longer responses (this helps with voice cloning)
-3. Show genuine interest in their answers
-4. Gently guide the conversation to cover these topics:
-   - Their name and basic info
-   - What they do for work/passion
-   - Their hobbies and interests
-   - What they're looking for in a partner
-   - Fun facts or unique things about them
-   - What their ideal date would be
-   - Their sense of humor and personality
-
-5. Occasionally ask them to elaborate or tell a story - this gets natural, expressive speech
-6. Keep the conversation flowing naturally - don't make it feel like an interview
-7. After covering the main topics (usually 5-10 minutes), wrap up warmly
-
-Example conversation starters:
-- "Hey! I'm excited to help you create your dating profile. Let's start easy - tell me your name and a little about yourself!"
-- "What's something you're really passionate about?"
-- "Tell me about your perfect weekend - paint me a picture!"
-
-Remember: The goal is a fun, natural conversation that extracts profile info AND captures their authentic voice."""
 
 
 async def get_signed_url() -> dict:
@@ -137,8 +129,9 @@ async def get_signed_url() -> dict:
         response = await client.get(
             f"https://api.elevenlabs.io/v1/convai/conversation/get_signed_url",
             params={"agent_id": ELEVENLABS_AGENT_ID},
-            headers={"xi-api-key": ELEVENLABS_API_KEY}
+            headers={"xi-api-key": ELEVEN_LABS_API_KEY}
         )
+        print(f"🔗 Signed URL response: {response.status_code}")
         response.raise_for_status()
         return response.json()
 
@@ -168,4 +161,3 @@ def unregister_session(session_id: str):
     """Remove a session from active sessions"""
     if session_id in active_sessions:
         del active_sessions[session_id]
-
